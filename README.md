@@ -6,7 +6,7 @@ changes.
 
 Go templates are a great foundation but suffer from some design
 flaws, and this is a pity. They could be really awesome.
-gorilla/template is an attempt to fix this.
+gorilla/template is yet another attempt to fix them.
 
 Goals
 -----
