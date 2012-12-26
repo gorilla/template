@@ -15,7 +15,7 @@ import (
 
 // Set stores a collection of parsed templates.
 //
-// To add more templates call Set.Parse (or other parse methods):
+// To add templates call Set.Parse (or other parse methods):
 //
 //     set, err := new(Set).Parse(`{{define "hello"}}Hello, World.{{end}}`)
 //     if err != nil {
@@ -162,7 +162,7 @@ func (s *Set) ParseGlob(pattern string) (*Set, error) {
 // and panics if the error is non-nil. It is intended for use in variable
 // initializations such as:
 //
-//     var set = template.Must(template.Parse(`{{define "hello"}}Hello, World.{{end}}`))
+//     var set = Must(new(Set).Parse(`{{define "hello"}}Hello, World.{{end}}`))
 func Must(s *Set, err error) *Set {
 	if err != nil {
 		panic(err)
@@ -170,7 +170,7 @@ func Must(s *Set, err error) *Set {
 	return s
 }
 
-// This redundant API is probably not needed?
+// This redundant API is probably not needed...
 
 // Parse creates a new Set with the template definitions from the given text.
 // If an error occurs, parsing stops and the returned set is nil.
