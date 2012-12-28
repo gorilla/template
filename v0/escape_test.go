@@ -13,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/gorilla/template/v0/escape"
-	"github.com/gorilla/template/v0/parse"
 )
 
 type badMarshaler struct{}
@@ -1015,79 +1014,6 @@ func TestErrors(t *testing.T) {
 		if strings.Index(got, test.err) == -1 {
 			t.Errorf("input=%q: error\n\t%q\ndoes not contain expected string\n\t%q", text, got, test.err)
 			continue
-		}
-	}
-}
-
-func TestEnsurePipelineContains(t *testing.T) {
-	tests := []struct {
-		input, output string
-		ids           []string
-	}{
-		{
-			"{{.X}}",
-			".X",
-			[]string{},
-		},
-		{
-			"{{.X | html}}",
-			".X | html",
-			[]string{},
-		},
-		{
-			"{{.X}}",
-			".X | html",
-			[]string{"html"},
-		},
-		{
-			"{{.X | html}}",
-			".X | html | urlquery",
-			[]string{"urlquery"},
-		},
-		{
-			"{{.X | html | urlquery}}",
-			".X | html | urlquery",
-			[]string{"urlquery"},
-		},
-		{
-			"{{.X | html | urlquery}}",
-			".X | html | urlquery",
-			[]string{"html", "urlquery"},
-		},
-		{
-			"{{.X | html | urlquery}}",
-			".X | html | urlquery",
-			[]string{"html"},
-		},
-		{
-			"{{.X | urlquery}}",
-			".X | html | urlquery",
-			[]string{"html", "urlquery"},
-		},
-		{
-			"{{.X | html | print}}",
-			".X | urlquery | html | print",
-			[]string{"urlquery", "html"},
-		},
-		{
-			"{{($).X | html | print}}",
-			"($).X | urlquery | html | print",
-			[]string{"urlquery", "html"},
-		},
-	}
-	for i, test := range tests {
-		text := fmt.Sprintf(`{{define "t"}}%s{{end}}`, test.input)
-		tmpl := Must(new(Set).Parse(text))
-		action, ok := (tmpl.tree["t"].List.Nodes[0].(*parse.ActionNode))
-		if !ok {
-			t.Errorf("#%d: First node is not an action: %s", i, text)
-			continue
-		}
-		pipe := action.Pipe
-		escape.EnsurePipelineContains(pipe, test.ids)
-		got := pipe.String()
-		if got != test.output {
-			t.Errorf("#%d: %s, %v: want\n\t%s\ngot\n\t%s", i, text, test.ids, test.output, got)
 		}
 	}
 }

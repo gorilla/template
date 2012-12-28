@@ -30,15 +30,16 @@ losing any functionality. Highlights:
 - The Set type replaces the Template type: a Set is a group
   of parsed templates.
 - Parse tree: added DefineNode and Tree types.
+- Node.String() methods result in templates that reproduce the
+  original template exactly.
 
 ### Phase 2 - Dec.2012
 In this step the contextual escaping mechanism from html/template
 becomes part of the gorilla/template package, effectively making it
 a combination of text/template and html/template. Highlights:
 
+- Same functionality of text/template and html/template but:
+  - 1119 less lines.
+  - 33 less types, functions and methods.
 - HTML contextual escaping is set explicitly calling Escape().
-- Reduced the number of types, functions and methods from
-  (text|html)/template by more than half: from 61 to 30.
 - No locking is performed during execution.
-- Node.String() methods result in templates that reproduce the
-  original template exactly.
