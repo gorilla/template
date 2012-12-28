@@ -165,9 +165,9 @@ var parseTests = []parseTest{
 	{"comment", "{{/*\n\n\n*/}}", noError,
 		``},
 	{"spaces", " \t\n", noError,
-		`" \t\n"`},
+		" \t\n"},
 	{"text", "some text", noError,
-		`"some text"`},
+		`some text`},
 	{"emptyAction", "{{}}", hasError,
 		`{{}}`},
 	{"field", "{{.X}}", noError,
@@ -191,19 +191,19 @@ var parseTests = []parseTest{
 	{"field applied to parentheses", "{{(.Y .Z).Field}}", noError,
 		`{{(.Y .Z).Field}}`},
 	{"simple if", "{{if .X}}hello{{end}}", noError,
-		`{{if .X}}"hello"{{end}}`},
+		`{{if .X}}hello{{end}}`},
 	{"if with else", "{{if .X}}true{{else}}false{{end}}", noError,
-		`{{if .X}}"true"{{else}}"false"{{end}}`},
+		`{{if .X}}true{{else}}false{{end}}`},
 	{"simple range", "{{range .X}}hello{{end}}", noError,
-		`{{range .X}}"hello"{{end}}`},
+		`{{range .X}}hello{{end}}`},
 	{"chained field range", "{{range .X.Y.Z}}hello{{end}}", noError,
-		`{{range .X.Y.Z}}"hello"{{end}}`},
+		`{{range .X.Y.Z}}hello{{end}}`},
 	{"nested range", "{{range .X}}hello{{range .Y}}goodbye{{end}}{{end}}", noError,
-		`{{range .X}}"hello"{{range .Y}}"goodbye"{{end}}{{end}}`},
+		`{{range .X}}hello{{range .Y}}goodbye{{end}}{{end}}`},
 	{"range with else", "{{range .X}}true{{else}}false{{end}}", noError,
-		`{{range .X}}"true"{{else}}"false"{{end}}`},
+		`{{range .X}}true{{else}}false{{end}}`},
 	{"range over pipeline", "{{range .X|.M}}true{{else}}false{{end}}", noError,
-		`{{range .X | .M}}"true"{{else}}"false"{{end}}`},
+		`{{range .X | .M}}true{{else}}false{{end}}`},
 	{"range []int", "{{range .SI}}{{.}}{{end}}", noError,
 		`{{range .SI}}{{.}}{{end}}`},
 	{"range 1 var", "{{range $x := .SI}}{{.}}{{end}}", noError,
@@ -217,9 +217,9 @@ var parseTests = []parseTest{
 	{"template with arg", "{{template `x` .Y}}", noError,
 		`{{template "x" .Y}}`},
 	{"with", "{{with .X}}hello{{end}}", noError,
-		`{{with .X}}"hello"{{end}}`},
+		`{{with .X}}hello{{end}}`},
 	{"with with else", "{{with .X}}hello{{else}}goodbye{{end}}", noError,
-		`{{with .X}}"hello"{{else}}"goodbye"{{end}}`},
+		`{{with .X}}hello{{else}}goodbye{{end}}`},
 	// Errors.
 	{"unclosed action", "hello{{range", hasError, ""},
 	{"unmatched end", "{{end}}", hasError, ""},
@@ -278,8 +278,9 @@ func testParse(doCopy bool, t *testing.T) {
 		} else {
 			result = tmpl[test.name].String()
 		}
-		if result != fmt.Sprintf(`{{define "%s"}}%s{{end}}`, test.name, test.result) {
-			t.Errorf("%s=(%q): got\n\t%v\nexpected\n\t%v", test.name, test.input, result, test.result)
+		expected := fmt.Sprintf(`{{define "%s"}}%s{{end}}`, test.name, test.result)
+		if result != expected {
+			t.Errorf("%s=(%q): got\n\t%v\nexpected\n\t%v", test.name, test.input, result, expected)
 		}
 	}
 }

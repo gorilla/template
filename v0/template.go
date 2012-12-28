@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"reflect"
 
+	"github.com/gorilla/template/v0/escape"
 	"github.com/gorilla/template/v0/parse"
 )
 
@@ -92,6 +93,18 @@ func (s *Set) Clone() (*Set, error) {
 		return nil, err
 	}
 	return ns, nil
+}
+
+// Escape executes contextual escaping in all templates in the set, rewriting
+// them to guarantee that the output is safe.
+//
+// It must be called once after all templates were added.
+func (s *Set) Escape() (*Set, error) {
+	if err := escape.EscapeTree(s.tree); err != nil {
+		return nil, err
+	}
+	s.Funcs(escape.FuncMap)
+	return s, nil
 }
 
 // Parse ----------------------------------------------------------------------
