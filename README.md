@@ -39,7 +39,9 @@ becomes part of the gorilla/template package, effectively making it
 a combination of text/template and html/template. Highlights:
 
 - Same functionality of text/template and html/template but:
-  - 1119 less lines.
+  - 1119 less lines of code.
   - 33 less types, functions and methods.
+  - No locking is performed during execution.
 - HTML contextual escaping is set explicitly calling Escape().
-- No locking is performed during execution.
+- Types to encapsulate safe strings are placed in the template/escape
+  package: CSS, JS, JSStr, HTML, HTMLAttr.

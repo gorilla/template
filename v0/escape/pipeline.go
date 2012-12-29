@@ -46,8 +46,6 @@ var equivEscapers = map[string]string{
 // For example, if p is (.X | html) and s is ["escapeJSVal", "html"] then it
 // has one matching, "html", and one to insert, "escapeJSVal", to produce
 // (.X | escapeJSVal | html).
-//
-// TODO: should not be public but this is a hard one.
 func ensurePipelineContains(p *parse.PipeNode, s []string) {
 	if len(s) == 0 {
 		return

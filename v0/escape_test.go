@@ -732,8 +732,9 @@ func TestEscapeSet(t *testing.T) {
 			`Hello, &lt;World&gt;!`,
 		},
 		// A template called in a context other than the start.
+		// TODO: This test doesn't work because the "helper" template can't
+		// be escaped ("ends in a non-text context"). Expected so no worry.
 		/*
-		// TODO: this test should pass?
 		{
 			map[string]string{
 				"main": `<a onclick='a = {{template "helper"}};'>`,
@@ -844,95 +845,95 @@ func TestEscapeSet(t *testing.T) {
 func TestErrors(t *testing.T) {
 	tests := []struct {
 		input string
-		err   string
+		err   map[string]string
 	}{
 		// Non-error cases.
 		{
 			"{{if .Cond}}<a>{{else}}<b>{{end}}",
-			"",
+			nil,
 		},
 		{
 			"{{if .Cond}}<a>{{end}}",
-			"",
+			nil,
 		},
 		{
 			"{{if .Cond}}{{else}}<b>{{end}}",
-			"",
+			nil,
 		},
 		{
 			"{{with .Cond}}<div>{{end}}",
-			"",
+			nil,
 		},
 		{
 			"{{range .Items}}<a>{{end}}",
-			"",
+			nil,
 		},
 		{
 			"<a href='/foo?{{range .Items}}&{{.K}}={{.V}}{{end}}'>",
-			"",
+			nil,
 		},
 		// Error cases.
 		{
 			"{{if .Cond}}<a{{end}}",
-			"z:1: {{if}} branches",
+			map[string]string{"z": "z:1: {{if}} branches"},
 		},
 		{
 			"{{if .Cond}}\n{{else}}\n<a{{end}}",
-			"z:1: {{if}} branches",
+			map[string]string{"z": "z:1: {{if}} branches"},
 		},
 		{
 			// Missing quote in the else branch.
 			`{{if .Cond}}<a href="foo">{{else}}<a href="bar>{{end}}`,
-			"z:1: {{if}} branches",
+			map[string]string{"z": "z:1: {{if}} branches"},
 		},
 		{
 			// Different kind of attribute: href implies a URL.
 			"<a {{if .Cond}}href='{{else}}title='{{end}}{{.X}}'>",
-			"z:1: {{if}} branches",
+			map[string]string{"z": "z:1: {{if}} branches"},
 		},
 		{
 			"\n{{with .X}}<a{{end}}",
-			"z:2: {{with}} branches",
+			map[string]string{"z": "z:2: {{with}} branches"},
 		},
 		{
 			"\n{{with .X}}<a>{{else}}<a{{end}}",
-			"z:2: {{with}} branches",
+			map[string]string{"z": "z:2: {{with}} branches"},
 		},
 		{
 			"{{range .Items}}<a{{end}}",
-			`z:1: on range loop re-entry: "<" in attribute name: "<a"`,
+			map[string]string{"z": `z:1: on range loop re-entry: "<" in attribute name: "<a"`},
 		},
 		{
 			"\n{{range .Items}} x='<a{{end}}",
-			"z:2: on range loop re-entry: {{range}} branches",
+			map[string]string{"z": "z:2: on range loop re-entry: {{range}} branches"},
 		},
 		{
 			"<a b=1 c={{.H}}",
-			"z: ends in a non-text context: {stateAttr delimSpaceOrTagEnd",
+			map[string]string{"z": "z: ends in a non-text context: {stateAttr delimSpaceOrTagEnd"},
 		},
 		{
 			"<script>foo();",
-			"z: ends in a non-text context: {stateJS",
+			map[string]string{"z": "z: ends in a non-text context: {stateJS"},
 		},
 		{
 			`<a href="{{if .F}}/foo?a={{else}}/bar/{{end}}{{.H}}">`,
-			"z:1: {{.H}} appears in an ambiguous URL context",
+			map[string]string{"z": "z:1: {{.H}} appears in an ambiguous URL context"},
 		},
 		{
 			`<a onclick="alert('Hello \`,
-			`unfinished escape sequence in JS string: "Hello \\"`,
+			map[string]string{"z": `unfinished escape sequence in JS string: "Hello \\"`},
 		},
 		{
 			`<a onclick='alert("Hello\, World\`,
-			`unfinished escape sequence in JS string: "Hello\\, World\\"`,
+			map[string]string{"z": `unfinished escape sequence in JS string: "Hello\\, World\\"`},
 		},
 		{
 			`<a onclick='alert(/x+\`,
-			`unfinished escape sequence in JS string: "x+\\"`,
+			map[string]string{"z": `unfinished escape sequence in JS string: "x+\\"`},
 		},
 		{
 			`<a onclick="/foo[\]/`,
-			`unfinished JS regexp charset: "foo[\\]/"`,
+			map[string]string{"z": `unfinished JS regexp charset: "foo[\\]/"`},
 		},
 		{
 			// It is ambiguous whether 1.5 should be 1\.5 or 1.5.
@@ -941,52 +942,53 @@ func TestErrors(t *testing.T) {
 			// or `/-1\.5/i.test(x)` which is a method call on a
 			// case insensitive regular expression.
 			`<script>{{if false}}var x = 1{{end}}/-{{"1.5"}}/i.test(x)</script>`,
-			`'/' could start a division or regexp: "/-"`,
+			map[string]string{"z": `'/' could start a division or regexp: "/-"`},
 		},
 		{
 			`{{template "foo"}}`,
-			"z:1: no such template \"foo\"",
+			map[string]string{"z": "z:1: no such template \"foo\""},
 		},
-		/*
 		{
 			`{{define "z"}}<div{{template "y"}}>{{end}}` +
 				// Illegal starting in stateTag but not in stateText.
 				`{{define "y"}} foo<b{{end}}`,
-			// TODO: Because we escape *all* templates, we get two different
-			// errors here:
-			//`"<" in attribute name: " foo<b"`,
-			//`: ends in a non-text context`,
+			map[string]string{
+				"z": `"<" in attribute name: " foo<b"`,
+				"y": `: ends in a non-text context`,
+			},
 		},
-		*/
 		{
 			`{{define "z"}}<script>reverseList = [{{template "t"}}]</script>{{end}}` +
 				// Missing " after recursive call.
 				`{{define "t"}}{{if .Tail}}{{template "t" .Tail}}{{end}}{{.Head}}",{{end}}`,
-			`: cannot compute output context for template "t$htmltemplate_stateJS_elementScript"`,
+			map[string]string{
+				"z": `: cannot compute output context for template "t$htmltemplate_stateJS_elementScript"`,
+				"t": `: cannot compute output context for template "t$htmltemplate_stateJS_elementScript"`,
+			},
 		},
 		{
 			`<input type=button value=onclick=>`,
-			`html/template:z: "=" in unquoted attr: "onclick="`,
+			map[string]string{"z": `html/template:z: "=" in unquoted attr: "onclick="`},
 		},
 		{
 			`<input type=button value= onclick=>`,
-			`html/template:z: "=" in unquoted attr: "onclick="`,
+			map[string]string{"z": `html/template:z: "=" in unquoted attr: "onclick="`},
 		},
 		{
 			`<input type=button value= 1+1=2>`,
-			`html/template:z: "=" in unquoted attr: "1+1=2"`,
+			map[string]string{"z": `html/template:z: "=" in unquoted attr: "1+1=2"`},
 		},
 		{
 			"<a class=`foo>",
-			"html/template:z: \"`\" in unquoted attr: \"`foo\"",
+			map[string]string{"z": "html/template:z: \"`\" in unquoted attr: \"`foo\""},
 		},
 		{
 			`<a style=font:'Arial'>`,
-			`html/template:z: "'" in unquoted attr: "font:'Arial'"`,
+			map[string]string{"z": `html/template:z: "'" in unquoted attr: "font:'Arial'"`},
 		},
 		{
 			`<a=foo>`,
-			`: expected space, attr name, or end of tag, but got "=foo>"`,
+			map[string]string{"z": `: expected space, attr name, or end of tag, but got "=foo>"`},
 		},
 	}
 
@@ -1005,14 +1007,23 @@ func TestErrors(t *testing.T) {
 		if err != nil {
 			got = err.Error()
 		}
-		if test.err == "" {
+		if test.err == nil {
 			if got != "" {
 				t.Errorf("input=%q: unexpected error %q", text, got)
 			}
 			continue
 		}
-		if strings.Index(got, test.err) == -1 {
-			t.Errorf("input=%q: error\n\t%q\ndoes not contain expected string\n\t%q", text, got, test.err)
+		var escapeErr *escape.Error
+		escapeErr, ok := err.(*escape.Error)
+		if !ok {
+			t.Errorf("failed to convert error to *escape.Error: %v", err)
+			continue
+		} else if test.err[escapeErr.Name] == "" {
+			t.Errorf("no error expected for template %q", escapeErr.Name)
+			continue
+		}
+		if strings.Index(got, test.err[escapeErr.Name]) == -1 {
+			t.Errorf("input=%q: error\n\t%q\ndoes not contain expected string\n\t%q", text, got, test.err[escapeErr.Name])
 			continue
 		}
 	}
