@@ -735,11 +735,7 @@ type DefineNode struct {
 }
 
 func newDefine(pos Pos, line int, name, parent string, list *ListNode, text string) *DefineNode {
-	d := &DefineNode{NodeType: NodeDefine, Pos: pos, Line: line, Name: name, Parent: parent, List: list, text: text}
-	if parent != "" {
-		d.onlyFill()
-	}
-	return d
+	return &DefineNode{NodeType: NodeDefine, Pos: pos, Line: line, Name: name, Parent: parent, List: list, text: text}
 }
 
 func (d *DefineNode) String() string {
@@ -752,18 +748,6 @@ func (d *DefineNode) CopyDefine() *DefineNode {
 
 func (d *DefineNode) Copy() Node {
 	return d.CopyDefine()
-}
-
-// onlyFill removes all child nodes except FillNode's if this is an extended
-// template.
-func (d *DefineNode) onlyFill() {
-	var nodes []Node
-	for _, v := range d.List.Nodes {
-		if _, ok := v.(*FillNode); ok {
-			nodes = append(nodes, v)
-		}
-	}
-	d.List.Nodes = nodes
 }
 
 // ErrorContext returns a textual representation of the location of the node

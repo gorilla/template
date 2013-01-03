@@ -36,8 +36,7 @@ func parentList(tree parse.Tree, name string) (parents []string, err error) {
 }
 
 // compilationOrder returns the order in which templates must be compiled in a
-// set. Templates with more dependencies are compiled first; those without a
-// parent are compiled only after all its dependents were compiled.
+// set. Parents are compiled only after all their dependents were compiled.
 func compilationOrder(tree parse.Tree) ([]string, error) {
 	var parents [][]string
 	for name, _ := range tree {
@@ -86,12 +85,6 @@ func inlineTree(tree parse.Tree) error {
 	return nil
 }
 
-// inlineDefine expands a {{define}} action.
-func inlineDefine(tree parse.Tree, name string) error {
-	// TODO: expand {{template}} before anything else?
-	return inlineExtendedDefine(tree, name)
-}
-
 // inlineSimpleDefine expands a parentless {{define}} action.
 func inlineSimpleDefine(tree parse.Tree, name string) error {
 	// Expand {{block}}, remove {{fill}}.
@@ -99,8 +92,8 @@ func inlineSimpleDefine(tree parse.Tree, name string) error {
 	return nil
 }
 
-// inlineExtendedDefine expands an extended {{define}} action.
-func inlineExtendedDefine(tree parse.Tree, name string) error {
+// inlineDefine expands a simple or extended {{define}} action.
+func inlineDefine(tree parse.Tree, name string) error {
 	define := tree[name]
 	parent := tree[define.Parent]
 	if define.Parent == "" {
@@ -132,7 +125,7 @@ func inlineExtendedDefine(tree parse.Tree, name string) error {
 		}
 	}
 	// Do it again until parent is empty.
-	return inlineExtendedDefine(tree, name)
+	return inlineDefine(tree, name)
 }
 
 // applyFillers replaces block and fill nodes by their filler counterparts.
