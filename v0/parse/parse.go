@@ -211,23 +211,45 @@ func (p *parser) parse(name, text, leftDelim, rightDelim string, funcs ...map[st
 	return p.tree, nil
 }
 
-// parseDefinition parses a {{define}} ...  {{end}} template definition and
-// returns a defineNode.  The "define" keyword has already been scanned.
+// parseDefinition parses a {{define}} ... {{end}} template definition and
+// returns a defineNode. The "define" keyword has already been scanned.
+//
+//	{{define stringValue}} itemList {{end}}
+//	{{define stringValue stringValue}} itemList {{end}}
 func (p *parser) parseDefinition(pos Pos) *DefineNode {
 	const context = "define clause"
 	defer p.popVars(1)
 	line := p.lex.lineNumber()
-	token := p.expectOneOf(itemString, itemRawString, context)
-	name, err := strconv.Unquote(token.val)
-	if err != nil {
-		p.error(err)
+	var name, parent string
+	token := p.nextNonSpace()
+	switch token.typ {
+	case itemString, itemRawString:
+		s, err := strconv.Unquote(token.val)
+		if err != nil {
+			p.error(err)
+		}
+		name = s
+	default:
+		p.unexpected(token, context)
 	}
-	p.expect(itemRightDelim, context)
+	token = p.nextNonSpace()
+	switch token.typ {
+	case itemString, itemRawString:
+		s, err := strconv.Unquote(token.val)
+		if err != nil {
+			p.error(err)
+		}
+		parent = s
+		p.expect(itemRightDelim, context)
+	case itemRightDelim:
+	default:
+		p.unexpected(token, context)
+	}
 	list, end := p.itemList()
 	if end.Type() != nodeEnd {
 		p.errorf("unexpected %s in %s", end, context)
 	}
-	return newDefine(pos, line, name, list, p.text)
+	return newDefine(pos, line, name, parent, list, p.text)
 }
 
 // itemList:
@@ -280,6 +302,10 @@ func (p *parser) action() (n Node) {
 		return p.templateControl()
 	case itemWith:
 		return p.withControl()
+	case itemBlock:
+		return p.blockControl()
+	case itemFill:
+		return p.fillControl()
 	}
 	p.backup()
 	// Do not pop variables; they persist until "end".
@@ -421,6 +447,56 @@ func (p *parser) templateControl() Node {
 		pipe = p.pipeline("template")
 	}
 	return newTemplate(token.pos, p.lex.lineNumber(), name, pipe)
+}
+
+// Block:
+//	{{block stringValue}}
+// Block keyword is past.
+func (p *parser) blockControl() Node {
+	const context = "block definition"
+	var name string
+	token := p.nextNonSpace()
+	switch token.typ {
+	case itemString, itemRawString:
+		s, err := strconv.Unquote(token.val)
+		if err != nil {
+			p.error(err)
+		}
+		name = s
+	default:
+		p.unexpected(token, context)
+	}
+	p.expect(itemRightDelim, context)
+	list, end := p.itemList()
+	if end.Type() != nodeEnd {
+		p.errorf("unexpected %s in %s", end, context)
+	}
+	return newBlock(token.pos, p.lex.lineNumber(), name, list)
+}
+
+// Fill:
+//	{{fill stringValue}} itemList {{end}}
+// Fill keyword is past.
+func (p *parser) fillControl() Node {
+	const context = "fill definition"
+	var name string
+	token := p.nextNonSpace()
+	switch token.typ {
+	case itemString, itemRawString:
+		s, err := strconv.Unquote(token.val)
+		if err != nil {
+			p.error(err)
+		}
+		name = s
+	default:
+		p.unexpected(token, context)
+	}
+	p.expect(itemRightDelim, context)
+	list, end := p.itemList()
+	if end.Type() != nodeEnd {
+		p.errorf("unexpected %s in %s", end, context)
+	}
+	return newFill(token.pos, p.lex.lineNumber(), name, list)
 }
 
 // command:

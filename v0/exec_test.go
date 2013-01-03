@@ -12,8 +12,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-
-	"github.com/gorilla/template/v0/escape"
 )
 
 var debug = flag.Bool("debug", false, "show the errors produced by the tests")
@@ -703,25 +701,6 @@ func TestExecError(t *testing.T) {
 	got := err.Error()
 	if got != want {
 		t.Errorf("expected\n%q\ngot\n%q", want, got)
-	}
-}
-
-func TestJSEscaping(t *testing.T) {
-	testCases := []struct {
-		in, exp string
-	}{
-		{`a`, `a`},
-		{`'foo`, `\'foo`},
-		{`Go "jump" \`, `Go \"jump\" \\`},
-		{`Yukihiro says "今日は世界"`, `Yukihiro says \"今日は世界\"`},
-		{"unprintable \uFDFF", `unprintable \uFDFF`},
-		{`<html>`, `\x3Chtml\x3E`},
-	}
-	for _, tc := range testCases {
-		s := escape.JSEscapeString(tc.in)
-		if s != tc.exp {
-			t.Errorf("JS escaping [%s] got [%s] want [%s]", tc.in, s, tc.exp)
-		}
 	}
 }
 

@@ -53,6 +53,7 @@ func (t NodeType) Type() NodeType {
 const (
 	NodeText       NodeType = iota // Plain text.
 	NodeAction                     // A non-control action such as a field evaluation.
+	NodeBlock                      // A block action.
 	NodeBool                       // A boolean constant.
 	NodeChain                      // A sequence of field accesses.
 	NodeCommand                    // An element of a pipeline.
@@ -61,6 +62,7 @@ const (
 	nodeElse                       // An else action. Not added to tree.
 	nodeEnd                        // An end action. Not added to tree.
 	NodeField                      // A field or method name.
+	NodeFill                       // A fill action.
 	NodeIdentifier                 // An identifier; always a function name.
 	NodeIf                         // An if action.
 	NodeList                       // A list of Nodes.
@@ -725,14 +727,19 @@ func (t *TemplateNode) Copy() Node {
 type DefineNode struct {
 	NodeType
 	Pos
-	Line int       // The line number in the input.
-	Name string    // The name of the template (unquoted).
-	List *ListNode // Contents of the template.
-	text string    // TODO: how could we avoid this field?
+	Line   int       // The line number in the input.
+	Name   string    // The name of the template (unquoted).
+	Parent string    // The name of the parent template (unquoted).
+	List   *ListNode // Contents of the template.
+	text   string    // TODO: how could we avoid this field?
 }
 
-func newDefine(pos Pos, line int, name string, list *ListNode, text string) *DefineNode {
-	return &DefineNode{NodeType: NodeDefine, Pos: pos, Line: line, Name: name, List: list, text: text}
+func newDefine(pos Pos, line int, name, parent string, list *ListNode, text string) *DefineNode {
+	d := &DefineNode{NodeType: NodeDefine, Pos: pos, Line: line, Name: name, Parent: parent, List: list, text: text}
+	if parent != "" {
+		d.onlyFill()
+	}
+	return d
 }
 
 func (d *DefineNode) String() string {
@@ -740,11 +747,23 @@ func (d *DefineNode) String() string {
 }
 
 func (d *DefineNode) CopyDefine() *DefineNode {
-	return newDefine(d.Pos, d.Line, d.Name, d.List.CopyList(), d.text)
+	return newDefine(d.Pos, d.Line, d.Name, d.Parent, d.List.CopyList(), d.text)
 }
 
 func (d *DefineNode) Copy() Node {
 	return d.CopyDefine()
+}
+
+// onlyFill removes all child nodes except FillNode's if this is an extended
+// template.
+func (d *DefineNode) onlyFill() {
+	var nodes []Node
+	for _, v := range d.List.Nodes {
+		if _, ok := v.(*FillNode); ok {
+			nodes = append(nodes, v)
+		}
+	}
+	d.List.Nodes = nodes
 }
 
 // ErrorContext returns a textual representation of the location of the node
@@ -767,19 +786,54 @@ func (d *DefineNode) ErrorContext(n Node) (location, context string) {
 	return fmt.Sprintf("%s:%d:%d", d.Name, lineNum, byteNum), context
 }
 
+// BlockNode represents a {{block}} action.
+type BlockNode struct {
+	NodeType
+	Pos
+	Line int       // The line number in the input.
+	Name string    // The name of the block (unquoted).
+	List *ListNode // Contents of the fill.
+}
+
+func newBlock(pos Pos, line int, name string, list *ListNode) *BlockNode {
+	return &BlockNode{NodeType: NodeBlock, Pos: pos, Line: line, Name: name, List: list}
+}
+
+func (b *BlockNode) String() string {
+	return fmt.Sprintf("{{block %q}}%s{{end}}", b.Name, b.List)
+}
+
+func (b *BlockNode) Copy() Node {
+	return newBlock(b.Pos, b.Line, b.Name, b.List.CopyList())
+}
+
+// FillNode represents a {{fill}} action.
+type FillNode struct {
+	NodeType
+	Pos
+	Line int       // The line number in the input.
+	Name string    // The name of the fill (unquoted).
+	List *ListNode // Contents of the fill.
+}
+
+func newFill(pos Pos, line int, name string, list *ListNode) *FillNode {
+	return &FillNode{NodeType: NodeFill, Line: line, Name: name, List: list}
+}
+
+func (f *FillNode) String() string {
+	return fmt.Sprintf("{{fill %q}}%s{{end}}", f.Name, f.List)
+}
+
+func (f *FillNode) CopyFill() *FillNode {
+	return newFill(f.Pos, f.Line, f.Name, f.List.CopyList())
+}
+
+func (f *FillNode) Copy() Node {
+	return f.CopyFill()
+}
+
 // Tree stores a collection of DefineNode's.
 type Tree map[string]*DefineNode
-
-func (Tree) unexported() {
-}
-
-func (t Tree) Position() Pos {
-	return Pos(0)
-}
-
-func (t Tree) Type() NodeType {
-	return NodeTree
-}
 
 // Add adds a node to the tree.
 func (t Tree) Add(node *DefineNode) error {
@@ -810,12 +864,7 @@ func (t Tree) String() string {
 }
 
 // Copy returns a deep copy of the tree.
-func (t Tree) Copy() Node {
-	return t.CopyTree()
-}
-
-// CopyTree returns a deep copy of the tree.
-func (t Tree) CopyTree() Tree {
+func (t Tree) Copy() Tree {
 	nt := Tree{}
 	for k, v := range t {
 		nt[k] = v.CopyDefine()

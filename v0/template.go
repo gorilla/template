@@ -88,7 +88,7 @@ func (s *Set) Clone() (*Set, error) {
 	for k, v := range s.execFuncs {
 		ns.execFuncs[k] = v
 	}
-	err := ns.tree.AddTree(s.tree.CopyTree())
+	err := ns.tree.AddTree(s.tree.Copy())
 	if err != nil {
 		return nil, err
 	}

@@ -332,6 +332,25 @@ func TestEscapersOnLower7AndSelectHighCodepoints(t *testing.T) {
 	}
 }
 
+func TestJSEscaping(t *testing.T) {
+	testCases := []struct {
+		in, exp string
+	}{
+		{`a`, `a`},
+		{`'foo`, `\'foo`},
+		{`Go "jump" \`, `Go \"jump\" \\`},
+		{`Yukihiro says "今日は世界"`, `Yukihiro says \"今日は世界\"`},
+		{"unprintable \uFDFF", `unprintable \uFDFF`},
+		{`<html>`, `\x3Chtml\x3E`},
+	}
+	for _, tc := range testCases {
+		s := JSEscapeString(tc.in)
+		if s != tc.exp {
+			t.Errorf("JS escaping [%s] got [%s] want [%s]", tc.in, s, tc.exp)
+		}
+	}
+}
+
 func BenchmarkJSValEscaperWithNum(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		jsValEscaper(3.141592654)
