@@ -110,6 +110,17 @@ func (s *Set) Clone() (*Set, error) {
 	return ns, nil
 }
 
+// Compile performs inlining and contextual escaping in all templates in the
+// set. This doesn't need to be called because the set is automatically
+// compiled when executed, but it can be used to force compilation and catch
+// errors earlier.
+func (s *Set) Compile() (*Set, error) {
+	if err := s.compile(); err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
 // compile performs inlining and contextual escaping during the first template
 // execution.
 func (s *Set) compile() error {
