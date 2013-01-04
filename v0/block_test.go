@@ -13,71 +13,118 @@ import (
 type blockTest struct {
 	name   string
 	input  string
-	tpl    string
-	values interface{}
 	ok     bool
 	result string
 }
 
 func TestBlock(t *testing.T) {
+	// Some deep inheritance.
+	tpl1 := `
+	{{define "tpl1"}}
+		A
+		{{block "header"}}
+			-h1-
+		{{end}}
+		B
+		{{block "footer"}}
+			-f1-
+		{{end}}
+		C
+	{{end}}
+
+	{{define "tpl2" "tpl1"}}
+		xxx
+	{{end}}
+
+	{{define "tpl3" "tpl2"}}
+		xxx
+		{{fill "header"}}
+			-h3-
+		{{end}}
+		xxx
+	{{end}}
+
+	{{define "tpl4" "tpl3"}}
+		xxx
+		{{fill "header"}}
+			-h4-
+		{{end}}
+		xxx
+		{{fill "footer"}}
+			-f4-
+		{{end}}
+		xxx
+	{{end}}
+
+	{{define "tpl5" "tpl4"}}
+		xxx
+		{{fill "footer"}}
+			-f5-
+		{{end}}
+		xxx
+	{{end}}`
+	// Recursive inheritance.
+	tpl2 := `
+	{{define "tpl1" "tpl2"}}
+		{{fill "header"}}
+			-h1-
+		{{end}}
+	{{end}}
+
+	{{define "tpl2" "tpl3"}}
+		{{fill "header"}}
+			-h2-
+		{{end}}
+	{{end}}
+
+	{{define "tpl3" "tpl1"}}
+		{{fill "header"}}
+			-h3-
+		{{end}}
+	{{end}}`
+
 	tests := []blockTest{
-		{"default block value", `
-		{{define "base"}}
-			{{block "header"}}
-				base header
-			{{end}}
-		{{end}}
-		{{define "t" "base"}}
-		{{end}}`, "t", nil, true, "base header"},
-
-		{"override block value", `
-		{{define "base"}}
-			{{block "header"}}
-				base header
-			{{end}}
-		{{end}}
-		{{define "t" "base"}}
-			{{fill "header"}}
-				t header
-			{{end}}
-		{{end}}`, "t", nil, true, "t header"},
-
-		{"override block value, deeper", `
-		{{define "base"}}
-			{{block "header"}}
-				base header
-			{{end}}
-		{{end}}
-		{{define "t" "base"}}
-			{{fill "header"}}
-				t header
-			{{end}}
-		{{end}}
-		{{define "x" "t"}}
-			{{fill "header"}}
-				x header
-			{{end}}
-		{{end}}`, "x", nil, true, "x header"},
+		// the base template itself
+		{"tpl1", tpl1, true, "A-h1-B-f1-C"},
+		// default block value
+		{"tpl2", tpl1, true, "A-h1-B-f1-C"},
+		// override only one block
+		{"tpl3", tpl1, true, "A-h3-B-f1-C"},
+		// override both blocks
+		{"tpl4", tpl1, true, "A-h4-B-f4-C"},
+		// override only one block, higher level override both
+		{"tpl5", tpl1, true, "A-h4-B-f5-C"},
+		// impossible recursion
+		{"tpl1", tpl2, false, "impossible recursion"},
 	}
 	for _, test := range tests {
 		set, err := new(Set).Parse(test.input)
-		if test.ok && err != nil {
+		if err != nil {
 			t.Errorf("%s: unexpected parse error: %s", test.name, err)
-			continue
-		} else if !test.ok && err == nil {
-			t.Errorf("%s: expected parse error", test.name)
 			continue
 		}
 		b := new(bytes.Buffer)
-		err = set.Execute(b, test.tpl, test.values)
-		if err != nil {
-			t.Errorf("%s: unexpected exec error: %s", test.name, err)
-			continue
-		}
-		result := strings.TrimSpace(b.String())
-		if test.result != result {
-			t.Errorf("%s: expected %q, got %q", test.name, test.result, result)
-			continue
+		err = set.Execute(b, test.name, nil)
+		if test.ok {
+			if err != nil {
+				t.Errorf("%s: unexpected exec error: %s", test.name, err)
+				continue
+			}
+			result := b.String()
+			result = strings.Replace(result, " ", "", -1)
+			result = strings.Replace(result, "\n", "", -1)
+			result = strings.Replace(result, "\t", "", -1)
+			if test.result != result {
+				t.Errorf("%s: expected %q, got %q", test.name, test.result, result)
+			}
+		} else {
+			if err == nil {
+				t.Errorf("%s: expected exec error", test.name)
+				continue
+			}
+			if !strings.Contains(err.Error(), test.result) {
+				t.Errorf("%s: expected exec error %q, got %q", test.name, test.result, err.Error())
+			}
 		}
 	}
 }

@@ -113,7 +113,7 @@ func errRecover(errp *error) {
 func (s *Set) Execute(wr io.Writer, name string, data interface{}) (err error) {
 	defer errRecover(&err)
 	// Inline and escape.
-	if err = s.compile(); err != nil {
+	if _, err = s.Compile(); err != nil {
 		panic(err)
 	}
 	// Now the real execution.

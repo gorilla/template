@@ -32,7 +32,7 @@ import (
 //         // do something with the execution error...
 //     }
 type Set struct {
-	sync.Mutex
+	mutex      sync.Mutex
 	tree       parse.Tree
 	leftDelim  string
 	rightDelim string
@@ -92,8 +92,8 @@ func (s *Set) Escape() *Set {
 // common templates and use them with variant definitions for other templates
 // by adding the variants after the clone is made.
 func (s *Set) Clone() (*Set, error) {
-	s.Lock()
-	defer s.Unlock()
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	ns := new(Set).Delims(s.leftDelim, s.rightDelim)
 	ns.init()
 	for k, v := range s.parseFuncs {
@@ -111,37 +111,27 @@ func (s *Set) Clone() (*Set, error) {
 }
 
 // Compile performs inlining and contextual escaping in all templates in the
-// set. This doesn't need to be called because the set is automatically
-// compiled when executed, but it can be used to force compilation and catch
-// errors earlier.
+// set. This doesn't need to be called manually because the set is compiled
+// automatically when executed, but it can be used to force compilation and
+// catch errors earlier.
 func (s *Set) Compile() (*Set, error) {
-	if err := s.compile(); err != nil {
-		return nil, err
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	if !s.compiled {
+		// Inlining.
+		if err := inlineTree(s.tree); err != nil {
+			return nil, err
+		}
+		// Contextual escaping.
+		if s.escape {
+			if err := escape.EscapeTree(s.tree); err != nil {
+				return nil, err
+			}
+			s.Funcs(escape.FuncMap)
+		}
+		s.compiled = true
 	}
 	return s, nil
-}
-
-// compile performs inlining and contextual escaping during the first template
-// execution.
-func (s *Set) compile() error {
-	s.Lock()
-	defer s.Unlock()
-	if s.compiled {
-		return nil
-	}
-	// Inlining.
-	if err := inlineTree(s.tree); err != nil {
-		return err
-	}
-	// Contextual escaping.
-	if s.escape {
-		if err := escape.EscapeTree(s.tree); err != nil {
-			return err
-		}
-		s.Funcs(escape.FuncMap)
-	}
-	s.compiled = true
-	return nil
 }
 
 // Parse ----------------------------------------------------------------------
@@ -150,10 +140,10 @@ func (s *Set) compile() error {
 // The name is only used for debugging purposes: when parsing files or glob,
 // it can show which file caused an error.
 //
-// Adding templates after the set executed results in error.
+// Parsing templates after the set executed results in an error.
 func (s *Set) parse(text, name string) (*Set, error) {
-	s.Lock()
-	defer s.Unlock()
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	if s.compiled {
 		return nil, fmt.Errorf(
 			"template: new templates can't be added after execution")
