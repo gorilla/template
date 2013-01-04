@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"reflect"
+	"sync"
 
 	"github.com/gorilla/template/v0/escape"
 	"github.com/gorilla/template/v0/parse"
@@ -31,9 +32,12 @@ import (
 //         // do something with the execution error...
 //     }
 type Set struct {
+	sync.Mutex
 	tree       parse.Tree
 	leftDelim  string
 	rightDelim string
+	escape     bool // compilation flag to perform contextual escaping
+	compiled   bool // compilation flag to lock the set after first execution
 	// We use two maps, one for parsing and one for execution.
 	parseFuncs FuncMap
 	execFuncs  map[string]reflect.Value
@@ -73,6 +77,14 @@ func (s *Set) Funcs(funcMap FuncMap) *Set {
 	return s
 }
 
+// Escape turns on contextual escaping in all templates in the set, rewriting
+// them to guarantee that the output is safe. The return value is the set,
+// so calls can be chained.
+func (s *Set) Escape() *Set {
+	s.escape = true
+	return s
+}
+
 // Clone returns a duplicate of the template, including all associated
 // templates. The actual representation is not copied, but the name space of
 // associated templates is, so further calls to Parse in the copy will add
@@ -80,6 +92,8 @@ func (s *Set) Funcs(funcMap FuncMap) *Set {
 // common templates and use them with variant definitions for other templates
 // by adding the variants after the clone is made.
 func (s *Set) Clone() (*Set, error) {
+	s.Lock()
+	defer s.Unlock()
 	ns := new(Set).Delims(s.leftDelim, s.rightDelim)
 	ns.init()
 	for k, v := range s.parseFuncs {
@@ -92,19 +106,31 @@ func (s *Set) Clone() (*Set, error) {
 	if err != nil {
 		return nil, err
 	}
+	ns.compiled = s.compiled
 	return ns, nil
 }
 
-// Escape executes contextual escaping in all templates in the set, rewriting
-// them to guarantee that the output is safe.
-//
-// It must be called once after all templates were added.
-func (s *Set) Escape() (*Set, error) {
-	if err := escape.EscapeTree(s.tree); err != nil {
-		return nil, err
+// compile performs inlining and contextual escaping during the first template
+// execution.
+func (s *Set) compile() error {
+	s.Lock()
+	defer s.Unlock()
+	if s.compiled {
+		return nil
 	}
-	s.Funcs(escape.FuncMap)
-	return s, nil
+	// Inlining.
+	if err := inlineTree(s.tree); err != nil {
+		return err
+	}
+	// Contextual escaping.
+	if s.escape {
+		if err := escape.EscapeTree(s.tree); err != nil {
+			return err
+		}
+		s.Funcs(escape.FuncMap)
+	}
+	s.compiled = true
+	return nil
 }
 
 // Parse ----------------------------------------------------------------------
@@ -115,6 +141,12 @@ func (s *Set) Escape() (*Set, error) {
 //
 // Adding templates after the set executed results in error.
 func (s *Set) parse(text, name string) (*Set, error) {
+	s.Lock()
+	defer s.Unlock()
+	if s.compiled {
+		return nil, fmt.Errorf(
+			"template: new templates can't be added after execution")
+	}
 	s.init()
 	if tree, err := parse.Parse(name, text, s.leftDelim, s.rightDelim,
 		builtins, s.parseFuncs); err != nil {

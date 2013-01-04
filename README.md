@@ -41,7 +41,19 @@ a combination of text/template and html/template. Highlights:
 - Same functionality of text/template and html/template but:
   - 1119 less lines of code.
   - 33 less types, functions and methods.
-  - No locking is performed during execution.
 - HTML contextual escaping is set explicitly calling Escape().
 - Types to encapsulate safe strings are placed in the template/escape
   package: CSS, JS, JSStr, HTML, HTMLAttr.
+
+### Phase 3 - Jan.2013
+We finally add template inheritance and introduce two new actions:
+{{block}} and {{fill}}. Highlights:
+
+- A {{block}} defines placeholders in a base template, and a {{fill}}
+  fills a placeholder in a parent template.
+- An inherited template is defined passing the parent template name
+  in the {{define}} action, as in {{define "child" "parent"}}.
+- New templates can't be added to a Set after execution: the set
+  is "compiled" and locked, as in html/template.
+- Inheritance and the new actions are inlined, so contextual escaping
+  and execution didn't require any changes.

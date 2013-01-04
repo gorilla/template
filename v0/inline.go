@@ -13,24 +13,24 @@ import (
 // parentList returns the list of parent templates for a given template name.
 // It returns an error if a template is not found or recursive dependency
 // is detected.
-func parentList(tree parse.Tree, name string) (parents []string, err error) {
+func parentList(tree parse.Tree, name string) (deps []string, err error) {
 	for {
 		define := tree[name]
 		if define == nil {
 			return nil, fmt.Errorf("template: template not found: %q", name)
 		}
-		for _, v := range parents {
+		for _, v := range deps {
 			if v == name {
-				parents = append(parents, name)
+				deps = append(deps, name)
 				return nil, fmt.Errorf("template: impossible recursion: %#v",
-					parents)
+					deps)
 			}
 		}
-		parents = append(parents, name)
-		if define.Parent == "" {
+		deps = append(deps, name)
+		name = define.Parent
+		if name == "" {
 			break
 		}
-		name = define.Parent
 	}
 	return
 }
@@ -38,30 +38,30 @@ func parentList(tree parse.Tree, name string) (parents []string, err error) {
 // compilationOrder returns the order in which templates must be compiled in a
 // set. Parents are compiled only after all their dependents were compiled.
 func compilationOrder(tree parse.Tree) ([]string, error) {
-	var parents [][]string
+	var deps [][]string
 	for name, _ := range tree {
 		p, err := parentList(tree, name)
 		if err != nil {
 			return nil, err
 		}
-		parents = append(parents, p)
+		deps = append(deps, p)
 	}
-	order := make([]string, len(parents))
-	for len(parents) > 0 {
+	order := make([]string, len(deps))
+	for len(deps) > 0 {
 		i := 0
-		for i < len(parents) {
-			if len(parents[i]) == 1 {
-				name := parents[i][0]
-				order[len(parents)-1] = name
-				parents = append(parents[:i], parents[i+1:]...)
-				for k, v := range parents {
+		for i < len(deps) {
+			if len(deps[i]) == 1 {
+				name := deps[i][0]
+				order[len(deps)-1] = name
+				deps = append(deps[:i], deps[i+1:]...)
+				for k, v := range deps {
 					var s []string
 					for _, v2 := range v {
 						if v2 != name {
 							s = append(s, v2)
 						}
 					}
-					parents[k] = s
+					deps[k] = s
 				}
 			} else {
 				i++
@@ -85,19 +85,14 @@ func inlineTree(tree parse.Tree) error {
 	return nil
 }
 
-// inlineSimpleDefine expands a parentless {{define}} action.
-func inlineSimpleDefine(tree parse.Tree, name string) error {
-	// Expand {{block}}, remove {{fill}}.
-	cleanupBlock(tree[name].List)
-	return nil
-}
-
 // inlineDefine expands a simple or extended {{define}} action.
 func inlineDefine(tree parse.Tree, name string) error {
 	define := tree[name]
 	parent := tree[define.Parent]
 	if define.Parent == "" {
-		return inlineSimpleDefine(tree, name)
+		// Expand {{block}}, remove {{fill}}.
+		cleanupBlock(tree[name].List)
+		return nil
 	} else if parent == nil {
 		return fmt.Errorf("template: define extends undefined parent %q",
 			define.Parent)
@@ -135,6 +130,9 @@ func applyFillers(n parse.Node, fillers map[string]*parse.FillNode, unused map[s
 		applyFillers(n.List, fillers, unused)
 		applyFillers(n.ElseList, fillers, unused)
 	case *parse.ListNode:
+		if n == nil {
+			return
+		}
 		for k, v := range n.Nodes {
 			switch v := v.(type) {
 			case *parse.BlockNode:
@@ -177,6 +175,9 @@ func cleanupBlock(n parse.Node) {
 		cleanupBlock(n.List)
 		cleanupBlock(n.ElseList)
 	case *parse.ListNode:
+		if n == nil {
+			return
+		}
 		k := 0
 		for k < len(n.Nodes) {
 			v := n.Nodes[k]

@@ -210,16 +210,13 @@ func TestTypedContent(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed parsing %q: %s", text, err)
 		}
-		if _, err := tmpl.Escape(); err != nil {
-			t.Errorf("escaping failed: %s", err)
-			continue
-		}
+		tmpl.Escape()
 		pre := strings.Index(test.input, "{{.}}")
 		post := len(test.input) - (pre + 5)
 		var b bytes.Buffer
 		for i, x := range data {
 			b.Reset()
-			if err := tmpl.Execute(&b, "t",x); err != nil {
+			if err := tmpl.Execute(&b, "t", x); err != nil {
 				t.Errorf("%q with %v: %s", test.input, x, err)
 				continue
 			}
@@ -255,9 +252,7 @@ func TestStringer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed parsing: %s", err)
 	}
-	if _, err := tmpl.Escape(); err != nil {
-		t.Errorf("escaping failed: %s", err)
-	}
+	tmpl.Escape()
 	if err := tmpl.Execute(b, "t", s); err != nil {
 		t.Fatal(err)
 	}

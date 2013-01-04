@@ -666,11 +666,7 @@ func TestEscape(t *testing.T) {
 			},
 		})
 		text := fmt.Sprintf(`{{define %q}}%s{{end}}`, test.name, test.input)
-		tmpl = Must(tmpl.Parse(text))
-		if _, err := tmpl.Escape(); err != nil {
-			t.Errorf("%s: escaping failed: %s", test.name, err)
-			continue
-		}
+		tmpl = Must(tmpl.Parse(text)).Escape()
 		b := new(bytes.Buffer)
 		if err := tmpl.Execute(b, test.name, data); err != nil {
 			t.Errorf("%s: template execution failed: %s", test.name, err)
@@ -826,12 +822,8 @@ func TestEscapeSet(t *testing.T) {
 			t.Errorf("error parsing %q: %v", source, err)
 			continue
 		}
-		if _, err := tmpl.Escape(); err != nil {
-			t.Errorf("input: %s\n\tescaping set failed: %s", source, err)
-			continue
-		}
+		tmpl.Escape()
 		var b bytes.Buffer
-
 		if err := tmpl.Execute(&b, "main", data); err != nil {
 			t.Errorf("%q executing %v", err.Error(), tmpl.tree["main"])
 			continue
@@ -1002,7 +994,9 @@ func TestErrors(t *testing.T) {
 			t.Errorf("input=%q: unexpected parse error %s\n", text, err)
 			continue
 		}
-		_, err = tmpl.Escape()
+		tmpl.Escape()
+		var b bytes.Buffer
+		err = tmpl.Execute(&b, "z", nil)
 		var got string
 		if err != nil {
 			got = err.Error()
@@ -1035,7 +1029,8 @@ func TestEscapeErrorsNotIgnorable(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed to parse set: %q", err)
 	}
-	_, err = tmpl.Escape()
+	tmpl.Escape()
+	err = tmpl.Execute(&b, "t", nil)
 	if err == nil {
 		t.Errorf("Expected error")
 	} else if b.Len() != 0 {
@@ -1049,7 +1044,8 @@ func TestEscapeSetErrorsNotIgnorable(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed to parse set: %q", err)
 	}
-	_, err = tmpl.Escape()
+	tmpl.Escape()
+	err = tmpl.Execute(&b, "t", nil)
 	if err == nil {
 		t.Errorf("Expected error")
 	} else if b.Len() != 0 {

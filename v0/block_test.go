@@ -61,10 +61,6 @@ func TestBlock(t *testing.T) {
 	}
 	for _, test := range tests {
 		set, err := new(Set).Parse(test.input)
-		if err := inlineTree(set.tree); err != nil {
-			t.Errorf("%s: unexpected inline error: %s", test.name, err)
-			continue
-		}
 		if test.ok && err != nil {
 			t.Errorf("%s: unexpected parse error: %s", test.name, err)
 			continue

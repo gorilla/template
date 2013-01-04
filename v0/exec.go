@@ -112,6 +112,11 @@ func errRecover(errp *error) {
 // to the specified data object and writes the output to wr.
 func (s *Set) Execute(wr io.Writer, name string, data interface{}) (err error) {
 	defer errRecover(&err)
+	// Inline and escape.
+	if err = s.compile(); err != nil {
+		panic(err)
+	}
+	// Now the real execution.
 	tmpl := s.tree[name]
 	if tmpl == nil {
 		return fmt.Errorf("template: no template %q in the set", name)
