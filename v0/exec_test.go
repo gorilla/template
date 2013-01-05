@@ -560,7 +560,7 @@ func stringer(s fmt.Stringer) string {
 	return s.String()
 }
 
-func testExecute(execTests []execTest, template *Set, t *testing.T) {
+func testExecute(execTests []execTest, set *Set, t *testing.T) {
 	b := new(bytes.Buffer)
 	funcs := FuncMap{
 		"add":      add,
@@ -581,12 +581,17 @@ func testExecute(execTests []execTest, template *Set, t *testing.T) {
 		if !strings.HasPrefix(test.input, "{{define") {
 			text = fmt.Sprintf(`{{define "%s"}}%s{{end}}`, test.name, test.input)
 		}
-		if template == nil {
+		if set == nil {
 			// TODO add test.name
 			tmpl, err = new(Set).Funcs(funcs).Parse(text)
 		} else {
 			// TODO add test.name
-			tmpl, err = template.Funcs(funcs).Parse(text)
+			tmpl, err = set.Clone()
+			if err != nil {
+				t.Errorf("%s: clone error: %s", test.name, err)
+				continue
+			}
+			tmpl, err = tmpl.Funcs(funcs).Parse(text)
 		}
 		if err != nil {
 			t.Errorf("%s: parse error: %s", test.name, err)

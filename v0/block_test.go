@@ -10,13 +10,6 @@ import (
 	"testing"
 )
 
-type slotTest struct {
-	name   string
-	input  string
-	ok     bool
-	result string
-}
-
 func TestSlot(t *testing.T) {
 	// Some deep inheritance.
 	tpl1 := `
@@ -83,19 +76,19 @@ func TestSlot(t *testing.T) {
 		{{end}}
 	{{end}}`
 
-	tests := []slotTest{
+	tests := []execTest{
 		// the base template itself
-		{"tpl1", tpl1, true, "A-h1-B-f1-C"},
+		{"tpl1", tpl1, "A-h1-B-f1-C", nil, true},
 		// default slot value
-		{"tpl2", tpl1, true, "A-h1-B-f1-C"},
+		{"tpl2", tpl1, "A-h1-B-f1-C", nil, true},
 		// override only one slot
-		{"tpl3", tpl1, true, "A-h3-B-f1-C"},
+		{"tpl3", tpl1, "A-h3-B-f1-C", nil, true},
 		// override both slots
-		{"tpl4", tpl1, true, "A-h4-B-f4-C"},
+		{"tpl4", tpl1, "A-h4-B-f4-C", nil, true},
 		// override only one slot, higher level override both
-		{"tpl5", tpl1, true, "A-h4-B-f5-C"},
+		{"tpl5", tpl1, "A-h4-B-f5-C", nil, true},
 		// impossible recursion
-		{"tpl1", tpl2, false, "impossible recursion"},
+		{"tpl1", tpl2, "impossible recursion", nil, false},
 	}
 	for _, test := range tests {
 		set, err := new(Set).Parse(test.input)
@@ -104,26 +97,26 @@ func TestSlot(t *testing.T) {
 			continue
 		}
 		b := new(bytes.Buffer)
-		err = set.Execute(b, test.name, nil)
+		err = set.Execute(b, test.name, test.data)
 		if test.ok {
 			if err != nil {
 				t.Errorf("%s: unexpected exec error: %s", test.name, err)
 				continue
 			}
-			result := b.String()
-			result = strings.Replace(result, " ", "", -1)
-			result = strings.Replace(result, "\n", "", -1)
-			result = strings.Replace(result, "\t", "", -1)
-			if test.result != result {
-				t.Errorf("%s: expected %q, got %q", test.name, test.result, result)
+			output := b.String()
+			output = strings.Replace(output, " ", "", -1)
+			output = strings.Replace(output, "\n", "", -1)
+			output = strings.Replace(output, "\t", "", -1)
+			if test.output != output {
+				t.Errorf("%s: expected %q, got %q", test.name, test.output, output)
 			}
 		} else {
 			if err == nil {
 				t.Errorf("%s: expected exec error", test.name)
 				continue
 			}
-			if !strings.Contains(err.Error(), test.result) {
-				t.Errorf("%s: expected exec error %q, got %q", test.name, test.result, err.Error())
+			if !strings.Contains(err.Error(), test.output) {
+				t.Errorf("%s: expected exec error %q, got %q", test.name, test.output, err.Error())
 			}
 		}
 	}
