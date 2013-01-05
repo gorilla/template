@@ -302,8 +302,8 @@ func (p *parser) action() (n Node) {
 		return p.templateControl()
 	case itemWith:
 		return p.withControl()
-	case itemBlock:
-		return p.blockControl()
+	case itemSlot:
+		return p.slotControl()
 	case itemFill:
 		return p.fillControl()
 	}
@@ -449,11 +449,11 @@ func (p *parser) templateControl() Node {
 	return newTemplate(token.pos, p.lex.lineNumber(), name, pipe)
 }
 
-// Block:
-//	{{block stringValue}}
-// Block keyword is past.
-func (p *parser) blockControl() Node {
-	const context = "block definition"
+// Slot:
+//	{{slot stringValue}}
+// Slot keyword is past.
+func (p *parser) slotControl() Node {
+	const context = "slot definition"
 	var name string
 	token := p.nextNonSpace()
 	switch token.typ {
@@ -471,7 +471,7 @@ func (p *parser) blockControl() Node {
 	if end.Type() != nodeEnd {
 		p.errorf("unexpected %s in %s", end, context)
 	}
-	return newBlock(token.pos, p.lex.lineNumber(), name, list)
+	return newSlot(token.pos, p.lex.lineNumber(), name, list)
 }
 
 // Fill:

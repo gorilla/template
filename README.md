@@ -47,9 +47,9 @@ a combination of text/template and html/template. Highlights:
 
 ### Phase 3 - Jan.2013
 We finally add template inheritance and introduce two new actions:
-{{block}} and {{fill}}. Highlights:
+{{slot}} and {{fill}}. Highlights:
 
-- A {{block}} defines placeholders in a base template, and a {{fill}}
+- A {{slot}} defines placeholders in a base template, and a {{fill}}
   fills a placeholder in a parent template.
 - An inherited template is defined passing the parent template name
   in the {{define}} action, as in {{define "child" "parent"}}.

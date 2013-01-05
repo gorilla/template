@@ -10,23 +10,23 @@ import (
 	"testing"
 )
 
-type blockTest struct {
+type slotTest struct {
 	name   string
 	input  string
 	ok     bool
 	result string
 }
 
-func TestBlock(t *testing.T) {
+func TestSlot(t *testing.T) {
 	// Some deep inheritance.
 	tpl1 := `
 	{{define "tpl1"}}
 		A
-		{{block "header"}}
+		{{slot "header"}}
 			-h1-
 		{{end}}
 		B
-		{{block "footer"}}
+		{{slot "footer"}}
 			-f1-
 		{{end}}
 		C
@@ -83,16 +83,16 @@ func TestBlock(t *testing.T) {
 		{{end}}
 	{{end}}`
 
-	tests := []blockTest{
+	tests := []slotTest{
 		// the base template itself
 		{"tpl1", tpl1, true, "A-h1-B-f1-C"},
-		// default block value
+		// default slot value
 		{"tpl2", tpl1, true, "A-h1-B-f1-C"},
-		// override only one block
+		// override only one slot
 		{"tpl3", tpl1, true, "A-h3-B-f1-C"},
-		// override both blocks
+		// override both slots
 		{"tpl4", tpl1, true, "A-h4-B-f4-C"},
-		// override only one block, higher level override both
+		// override only one slot, higher level override both
 		{"tpl5", tpl1, true, "A-h4-B-f5-C"},
 		// impossible recursion
 		{"tpl1", tpl2, false, "impossible recursion"},

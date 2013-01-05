@@ -90,8 +90,8 @@ func inlineDefine(tree parse.Tree, name string) error {
 	define := tree[name]
 	parent := tree[define.Parent]
 	if define.Parent == "" {
-		// Expand {{block}}, remove {{fill}}.
-		cleanupBlock(tree[name].List)
+		// Expand {{slot}}, remove {{fill}}.
+		cleanupSlot(tree[name].List)
 		return nil
 	} else if parent == nil {
 		return fmt.Errorf("template: define extends undefined parent %q",
@@ -111,7 +111,7 @@ func inlineDefine(tree parse.Tree, name string) error {
 	// report wrong positions and context.
 	define.List = parent.List.CopyList()
 	define.Parent = parent.Parent
-	// Replace FillNode's and BlockNode's from parent.
+	// Replace FillNode's and SlotNode's from parent.
 	applyFillers(define.List, fillers, unused)
 	// Add extra fillers.
 	for k, v := range unused {
@@ -123,7 +123,7 @@ func inlineDefine(tree parse.Tree, name string) error {
 	return inlineDefine(tree, name)
 }
 
-// applyFillers replaces block and fill nodes by their filler counterparts.
+// applyFillers replaces slot and fill nodes by their filler counterparts.
 func applyFillers(n parse.Node, fillers map[string]*parse.FillNode, unused map[string]bool) {
 	switch n := n.(type) {
 	case *parse.IfNode:
@@ -135,8 +135,8 @@ func applyFillers(n parse.Node, fillers map[string]*parse.FillNode, unused map[s
 		}
 		for k, v := range n.Nodes {
 			switch v := v.(type) {
-			case *parse.BlockNode:
-				// Replace the block by the list of nodes from the filler.
+			case *parse.SlotNode:
+				// Replace the slot by the list of nodes from the filler.
 				if filler := fillers[v.Name]; filler != nil {
 					n.Nodes[k] = filler.List.CopyList()
 				}
@@ -159,21 +159,21 @@ func applyFillers(n parse.Node, fillers map[string]*parse.FillNode, unused map[s
 	}
 }
 
-// cleanupBlock removes block and fill nodes.
+// cleanupSlot removes slot and fill nodes.
 //
 // May contain child actions:
-// BlockNode:  n.List
+// SlotNode:  n.List
 // DefineNode: n.List
 // FillNode:   n.List
 // IfNode:     n.List, n.ElseList
 // ListNode:   n.Nodes
 // RangeNode:  n.List, n.ElseList
 // WithNode:   n.List, n.ElseList
-func cleanupBlock(n parse.Node) {
+func cleanupSlot(n parse.Node) {
 	switch n := n.(type) {
 	case *parse.IfNode:
-		cleanupBlock(n.List)
-		cleanupBlock(n.ElseList)
+		cleanupSlot(n.List)
+		cleanupSlot(n.ElseList)
 	case *parse.ListNode:
 		if n == nil {
 			return
@@ -182,8 +182,8 @@ func cleanupBlock(n parse.Node) {
 		for k < len(n.Nodes) {
 			v := n.Nodes[k]
 			switch v := v.(type) {
-			case *parse.BlockNode:
-				// Replace the block by its list of nodes.
+			case *parse.SlotNode:
+				// Replace the slot by its list of nodes.
 				n.Nodes[k] = v.List
 				continue
 			case *parse.FillNode:
@@ -191,15 +191,15 @@ func cleanupBlock(n parse.Node) {
 				n.Nodes = append(n.Nodes[:k], n.Nodes[k+1:]...)
 				continue
 			default:
-				cleanupBlock(v)
+				cleanupSlot(v)
 			}
 			k++
 		}
 	case *parse.RangeNode:
-		cleanupBlock(n.List)
-		cleanupBlock(n.ElseList)
+		cleanupSlot(n.List)
+		cleanupSlot(n.ElseList)
 	case *parse.WithNode:
-		cleanupBlock(n.List)
-		cleanupBlock(n.ElseList)
+		cleanupSlot(n.List)
+		cleanupSlot(n.ElseList)
 	}
 }

@@ -67,7 +67,7 @@ const (
 	itemRange    // range keyword
 	itemTemplate // template keyword
 	itemWith     // with keyword
-	itemBlock    // block keyword
+	itemSlot     // slot keyword
 	itemFill     // fill keyword
 )
 
@@ -81,7 +81,7 @@ var key = map[string]itemType{
 	"nil":      itemNil,
 	"template": itemTemplate,
 	"with":     itemWith,
-	"block":    itemBlock,
+	"slot":     itemSlot,
 	"fill":     itemFill,
 }
 

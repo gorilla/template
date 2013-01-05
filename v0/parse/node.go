@@ -53,7 +53,6 @@ func (t NodeType) Type() NodeType {
 const (
 	NodeText       NodeType = iota // Plain text.
 	NodeAction                     // A non-control action such as a field evaluation.
-	NodeBlock                      // A block action.
 	NodeBool                       // A boolean constant.
 	NodeChain                      // A sequence of field accesses.
 	NodeCommand                    // An element of a pipeline.
@@ -70,6 +69,7 @@ const (
 	NodeNumber                     // A numerical constant.
 	NodePipe                       // A pipeline of commands.
 	NodeRange                      // A range action.
+	NodeSlot                       // A slot action.
 	NodeString                     // A string constant.
 	NodeTemplate                   // A template invocation action.
 	NodeTree                       // A tree of define nodes.
@@ -770,25 +770,25 @@ func (d *DefineNode) ErrorContext(n Node) (location, context string) {
 	return fmt.Sprintf("%s:%d:%d", d.Name, lineNum, byteNum), context
 }
 
-// BlockNode represents a {{block}} action.
-type BlockNode struct {
+// SlotNode represents a {{slot}} action.
+type SlotNode struct {
 	NodeType
 	Pos
 	Line int       // The line number in the input.
-	Name string    // The name of the block (unquoted).
+	Name string    // The name of the slot (unquoted).
 	List *ListNode // Contents of the fill.
 }
 
-func newBlock(pos Pos, line int, name string, list *ListNode) *BlockNode {
-	return &BlockNode{NodeType: NodeBlock, Pos: pos, Line: line, Name: name, List: list}
+func newSlot(pos Pos, line int, name string, list *ListNode) *SlotNode {
+	return &SlotNode{NodeType: NodeSlot, Pos: pos, Line: line, Name: name, List: list}
 }
 
-func (b *BlockNode) String() string {
-	return fmt.Sprintf("{{block %q}}%s{{end}}", b.Name, b.List)
+func (s *SlotNode) String() string {
+	return fmt.Sprintf("{{slot %q}}%s{{end}}", s.Name, s.List)
 }
 
-func (b *BlockNode) Copy() Node {
-	return newBlock(b.Pos, b.Line, b.Name, b.List.CopyList())
+func (s *SlotNode) Copy() Node {
+	return newSlot(s.Pos, s.Line, s.Name, s.List.CopyList())
 }
 
 // FillNode represents a {{fill}} action.
