@@ -106,6 +106,7 @@ func (s *Set) Clone() (*Set, error) {
 	if err != nil {
 		return nil, err
 	}
+	ns.escape = s.escape
 	ns.compiled = s.compiled
 	return ns, nil
 }
